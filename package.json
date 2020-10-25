@@ -21,8 +21,10 @@
     "booture": "^2.0.0",
     "fluture": "^13.0.1",
     "fluture-hooks": "^2.0.2",
+    "fluture-node": "^3.0.0",
     "mongodb": "^3.6.2",
     "ramda": "^0.27.1",
-    "sanctuary": "^3.1.0"
+    "sanctuary": "^3.1.0",
+    "sanctuary-def": "^0.22.0"
   }
 }

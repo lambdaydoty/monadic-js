@@ -34,7 +34,7 @@ const fromResponse = ({
  * 4) Parse Json string to Object
  * 5) Parse Json object to a specific `type`
  * 6) Destruct, map, & filter the response
- * 7) Guard a rejection timer
+ * 7) Guard timeout with a rejection timer
  *
  * */
 const $def = $.create ({ checkTypes: true, env: $.env }) ('') ({})
