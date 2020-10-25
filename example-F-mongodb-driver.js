@@ -2,7 +2,7 @@
 /* eslint no-multi-spaces: ["error", { ignoreEOLComments: true }] */
 const F = require ('fluture')
 const R = require ('ramda')
-const S = require ('sanctuary').unchecked
+const { unchecked: S } = require ('sanctuary')
 
 // const { } = process.env
 
