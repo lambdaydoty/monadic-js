@@ -23,7 +23,6 @@ const findOne = client => collection => (query, opts) => F.node (done => client
   .db ()
   .collection (collection)
   .findOne (query, opts, done))
-// .pipe (F.chain (rejectNull (query)))
 
 // ∷ ... → Cursor
 const findMany = client => collection => (query, opts) => F.node (done => client
@@ -79,7 +78,7 @@ const updateOne = client => collection => (filter, update_, opts_) => {
 
 const withTransaction = client => (fn /* ∷ ClientSession → Future x y */, opts) => {
   const acquire = F.resolve (client.startSession ())
-  const dispose = session => F.node (done => session.endSession ({}, (...args) => console.log ('*end*') || done (...args)))
+  const dispose = session => F.node (done => session.endSession ({}, done))
   const consume = session => {
     const [commitF, abortF] = [
       F.node (done => session.commitTransaction (done)),
