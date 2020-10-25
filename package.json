@@ -19,6 +19,7 @@
   "dependencies": {
     "bignumber.js": "^9.0.1",
     "booture": "^2.0.0",
+    "express": "^4.17.1",
     "fluture": "^13.0.1",
     "fluture-hooks": "^2.0.2",
     "fluture-node": "^3.0.0",
