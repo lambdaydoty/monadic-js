@@ -6,11 +6,12 @@ const { unchecked: S } = require ('sanctuary')
 
 // const { } = process.env
 
-// ∷ ... → Curosr
+// ∷ ... → [Doc]
 const aggregate = client => collection => (pipeline, opts) => F.node (done => client
   .db ()
   .collection (collection)
-  .aggregate (pipeline, opts, done))
+  .aggregate (pipeline, opts)
+  .toArray (done))
 
 // ∷ ... → Cursor
 const find = client => collection => (query, opts) => F.attempt (_ => client
@@ -24,7 +25,7 @@ const findOne = client => collection => (query, opts) => F.node (done => client
   .collection (collection)
   .findOne (query, opts, done))
 
-// ∷ ... → Cursor
+// ∷ ... → [Doc]
 const findMany = client => collection => (query, opts) => F.node (done => client
   .db ()
   .collection (collection)
