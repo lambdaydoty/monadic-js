@@ -32,12 +32,12 @@ module.exports = {
 
 function errorHandlers () {
   return ({
-    catchall: (err, req, res, next) => {
-      const { status = 500, code, message } = err
-      if (status >= 500) console.error (err)
+    catchall: (error, req, res, next) => {
+      const { status = 500, code, message } = error
+      if (status >= 500) console.error (error)
       res
         .status (status)
-        .send ({ message, code })
+        .send ({ message, status, code })
         .end ()
     },
   })
