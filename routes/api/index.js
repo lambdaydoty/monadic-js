@@ -9,16 +9,18 @@ const [F, { middleware, Next }] = [
 module.exports = express
   .Router ()
   .use (require ('./public'))
-  .param ('account', dispatcher)
+  .param ('account', load ({ model: 'Account', name: 'account' }))
   .use ('/:account', require ('./accounted'))
 
-function dispatcher (req, res, next, _id) {
-  const M = middleware ((req, locals) => F.go (function * () {
-    const { client } = locals
-    const { Account } = models (client) ()
-    const account = yield Account.findOne ({ _id })
-    Object.assign (req, { account })
-    return Next (locals)
-  }))
-  return M (req, res, next)
+function load ({ model, name }) {
+  return (req, res, next, _id) => { // bind `_id`
+    const M = middleware ((req, locals) => F.go (function * () {
+      const { client } = locals
+      const { [model]: m } = models (client) ()
+      const doc = yield m.findOne ({ _id })
+      Object.assign (req, { [name]: doc })
+      return Next (locals)
+    }))
+    return M (req, res, next)
+  }
 }
