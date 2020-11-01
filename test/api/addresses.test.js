@@ -26,14 +26,14 @@ const asyncTest = (name, routine) => test (name, () => F.promise (F.go (routine)
 asyncTest ('Get an address', function * () {
   const [currency, user, token, address] = [rand (), rand (), rand (), rand ()]
   const { Account, Address, Currency } = models (client) (currency)
-  const mock = { currency, account: user, address, client_id: null }
+  const mock = { currency, account: user, address, client_id: rand () }
 
   yield Currency.insertOne ({ _id: currency })
   yield Account.insertOne ({ _id: user, token })
   yield Address.insertOne (mock)
 
   const { status, body } = yield F.node (done => request (create (client))
-    .get (`/api/${user}/${currency}/addresses/bar`)
+    .get (`/api/${user}/${currency}/addresses/${address}`)
     .set ('token', token)
     .end (done))
 
