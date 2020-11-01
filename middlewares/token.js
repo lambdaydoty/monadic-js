@@ -14,5 +14,7 @@ module.exports = middleware ((req, locals) => F.go (function * () {
   const token = req.get ('token')
   const { Account } = models (client) ()
   const account = yield Account.findOne ({ token })
-  return Next ({ ...locals, account })
+  // return Next ({ ...locals, account })
+  Object.assign (req, { account })
+  return Next (locals)
 }))
