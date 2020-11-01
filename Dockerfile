@@ -11,7 +11,7 @@ FROM node:14
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
-COPY . .
+COPY ./src .
 #COPY --from=0 /app/doc ./doc
 #COPY --from=0 /app/build .
 COPY --from=0 /app/keyfile.json .
