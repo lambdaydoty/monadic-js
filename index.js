@@ -148,9 +148,9 @@ const program = withServices (({ app, config }) => F.Future ((rej, res) => {
   const noop = () => {}
 
   const server = app.listen (+port, onListen)
-  server.once ('error', rej)
   server.keepAliveTimeout = 650 * 1000
   server.headersTimeout = 654 * 1000
+  server.once ('error', rej)
   process.once ('SIGINT', res)
 
   return noop
