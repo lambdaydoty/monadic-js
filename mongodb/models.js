@@ -15,10 +15,12 @@ module.exports = client => (prefix = '') => {
   const Currency = S.pipe ([model, prototyping (), currencing ()]) ('currencies')
   const Balance = S.pipe ([model, prototyping (), balancing ()]) ('balances')
   const Account = S.pipe ([model, prototyping ()]) ('accounts')
+  const Address = S.pipe ([model, prototyping ()]) (prefix + '.' + 'addresses')
 
   return {
     Account,
     Balance,
     Currency,
+    Address,
   }
 }
