@@ -2,7 +2,7 @@ const [F, { middleware, Next }] = [
   require ('fluture'),
   require ('fluture-express'),
 ]
-const models = require ('../mongodb/models')
+const models = require ('../models')
 
 /**
  * middleware for `route parameters`

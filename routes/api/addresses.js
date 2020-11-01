@@ -4,7 +4,7 @@ const [F, { middleware, Json }] = [
   require ('fluture-express'),
 ]
 const { escape, token, auth } = require ('../../middlewares')
-const models = require ('../../mongodb/models')
+const models = require ('../../models')
 
 const get = [escape, token, auth]
 const Json200 = x => Json (200, x)

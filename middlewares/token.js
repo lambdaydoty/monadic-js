@@ -7,7 +7,7 @@ const [F, { middleware, Next }] = [
   require ('fluture-express'),
 ]
 
-const models = require ('../mongodb/models')
+const models = require ('../models')
 
 module.exports = middleware ((req, locals) => F.go (function * () {
   const { client } = locals
