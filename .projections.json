@@ -1,0 +1,72 @@
+{
+  "package.json": {
+    "type": "package_json"
+  },
+
+  "Dockerfile": {
+    "type": "docker"
+  },
+
+  ".env.example": {
+    "type": "envex",
+    "alternate": ".env"
+  },
+  ".env": {
+    "type": "env",
+    "alternate": ".env.example"
+  },
+
+  "src/models/*.js": {
+    "type": "model",
+    "alternate": "test/models/{}.test.js"
+  },
+  "src/middlewares/*.js": {
+    "type": "middleware",
+    "alternate": "test/middlewares/{}.test.js"
+  },
+  "src/routes/*.js": {
+    "type": "route"
+  },
+  "src/seeds/*.js": {
+    "type": "seed"
+  },
+
+  "src/services/*.js": {
+    "type": "service"
+  },
+  "src/services/btc/*.js": {
+    "type": "btc"
+  },
+  "src/services/eth/*.js": {
+    "type": "eth"
+  },
+  "src/services/xrp/*.js": {
+    "type": "xrp"
+  },
+
+  "src/utils/*.js": {
+    "type": "util",
+    "alternate": "test/utils/{}.test.js"
+  },
+  "src/indexes/*.js": {
+    "type": "index"
+  },
+
+  "test/*.test.js": {
+    "type": "test"
+  },
+
+  "test/models/*.test.js": {
+    "alternate": "src/models/{}.js"
+  },
+  "test/middlewares/*.test.js": {
+    "alternate": "src/middlewares/{}.js"
+  },
+  "test/utils/*.test.js": {
+    "alternate": "src/utils/{}.js"
+  },
+
+  "lib/flow-typed/*.js": {
+    "type": "type"
+  }
+}
