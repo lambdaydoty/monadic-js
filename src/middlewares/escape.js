@@ -6,7 +6,6 @@ const { json } = require ('express-mung')
 
 module.exports = json (function (body, req, res) {
   const fn = R.pipe (id, key)
-
   return Array.isArray (body)
     ? body.map (fn)
     : fn (body)

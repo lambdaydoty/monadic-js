@@ -13,8 +13,6 @@ module.exports = function load ({ model, name }) {
       const { client } = locals
       const { [model]: m } = models (client) ()
       const doc = yield m.findOne ({ _id })
-      // Object.assign (req, { [name]: doc })
-      // return Next (locals)
       return Next ({ ...locals, [name]: doc })
     }))
     return M (req, res, next)
