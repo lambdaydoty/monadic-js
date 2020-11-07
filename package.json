@@ -20,6 +20,7 @@
   "dependencies": {
     "@google-cloud/kms": "^2.1.2",
     "@google-cloud/secret-manager": "^3.2.0",
+    "@rexform/validation": "^2.1.4",
     "bignumber.js": "^9.0.1",
     "booture": "^2.0.0",
     "dotenv": "^8.2.0",
