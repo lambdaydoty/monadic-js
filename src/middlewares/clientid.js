@@ -1,12 +1,13 @@
-const ROOT = '..'
-const [F, { middleware, Next }, $, { unchecked: S }] = [
+const [R, F, { middleware, Next }, $, { unchecked: S }] = [
+  require ('ramda'),
   require ('fluture'),
   require ('fluture-express'),
   require ('sanctuary-def'),
   require ('sanctuary'),
 ]
 const V = require ('@rexform/validation')
-const { BadParameter } = require (`${ROOT}/errors`)
+// const ROOT = '..'
+// const { BadParameter } = require (`${ROOT}/errors`)
 // const { isprint } = require('../utils')
 
 const [Left, Right] = [
@@ -14,13 +15,12 @@ const [Left, Right] = [
   x => Object.assign (S.Right (x), { fold (f, g) { return S.either (f) (g) (this) } }),
 ]
 
-module.exports = middleware ((req, locals) => F.go (function * () {
+module.exports = middleware ((req, locals) => {
   const { body } = req
 
-  console.log ({ body })
   const typing = x => S.is ($.NonEmpty ($.String)) (x)
     ? S.Right (x)
-    : S.Left ('The `client_id` must be a string')
+    : S.Left ('The `client_id` must be a printable string')
   const printing = x => x // TODO
     ? S.Right (x)
     : S.Left (`The \`client_id\` must be printable`)
@@ -34,10 +34,9 @@ module.exports = middleware ((req, locals) => F.go (function * () {
     V.fromEither (''),
   ])
 
-  yield V.of (body)
-    .map (V.validateProperties ({ client_id: clientid }))
-    .chain (V.allProperties)
-    .fold (x => F.reject (new BadParameter (x)), F.resolve)
+  Object.assign (req, {
+    body: R.over (R.lensProp ('client_id')) (clientid) (body),
+  })
 
-  return Next (locals)
-}))
+  return F.resolve (Next (locals))
+})
