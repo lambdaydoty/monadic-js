@@ -38,7 +38,7 @@ module.exports = express
     ...post,
     middleware ((req, locals) => {
       const { body } = req
-      const invalid = e => F.reject (new BadParameter (e))
+      const invalid = es => F.reject (new BadParameter (es.join ('; ')))
       const valid = ({ client_id: id }) => F.resolve (Json200 ({ id }))
       return V.allProperties (body)
         .fold (invalid, valid)
