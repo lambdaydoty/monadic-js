@@ -3,11 +3,9 @@ const [F, { middleware, Json }] = [
   require ('fluture'),
   require ('fluture-express'),
 ]
-const V = require ('@rexform/validation')
-const { escape, token, auth } = require ('../../middlewares')
+const { escape, token, auth, validateAll } = require ('../../middlewares')
 const { timing, clientid } = require ('../../middlewares')
 const models = require ('../../models')
-const { BadParameter } = require ('../../errors')
 
 const get = [escape, token, auth]
 const post = [...get, timing (), clientid]
@@ -36,11 +34,10 @@ module.exports = express
   ])
   .post ('/', [
     ...post,
+    validateAll,
     middleware ((req, locals) => {
       const { body } = req
-      const invalid = es => F.reject (new BadParameter (es.join ('; ')))
-      const valid = ({ client_id: id }) => F.resolve (Json200 ({ id }))
-      return V.allProperties (body)
-        .fold (invalid, valid)
+      const { client_id: id } = body
+      return F.resolve (Json200 ({ id }))
     }),
   ])

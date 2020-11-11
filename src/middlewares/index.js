@@ -5,4 +5,5 @@ module.exports = {
   auth: require ('./auth'),
   timing: require ('./timing'),
   clientid: require ('./clientid'),
+  validateAll: require ('./validateAll'),
 }
