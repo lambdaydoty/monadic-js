@@ -10,7 +10,7 @@ module.exports = {
     "jest"
   ],
   "rules": {
-    "comma-dangle": ["error", "always-multiline"],
+    "comma-dangle": ["error", "only-multiline"],
     "no-only-tests/no-only-tests": "error",
     "func-call-spacing": ["error", "always"],
     "no-multi-spaces": ["error", { "ignoreEOLComments": true }],
@@ -18,7 +18,11 @@ module.exports = {
     "jest/no-focused-tests": "error",
     "jest/no-identical-title": "error",
     "jest/prefer-to-have-length": "warn",
-    "jest/valid-expect": "error"
+    "jest/valid-expect": "error",
+    "func-call-spacing": ["error", "always", {"allowNewlines": true}],
+    "no-unexpected-multiline": ["off"],
+    "indent": ["off"],
+    "operator-linebreak": ["error", "after"]
   },
   "env": {
     "jest/globals": true
