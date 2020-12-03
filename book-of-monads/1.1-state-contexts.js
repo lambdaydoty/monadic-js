@@ -38,11 +38,11 @@ console.log
   function relabel (t) {
     return t.cata ({
       Leaf: x => M.State (
-        i => ({ value: Leaf (S.Pair (i) (x)), state: i + 1 }),
+            i => ({ value: Leaf (S.Pair (i) (x)), state: i + 1 }),
       ),
       Node: (l, r) => relabel (l)[next] (
-        ll => relabel (r)[next] (
-          rr => pure (Node (ll) (rr)))),
+                ll => relabel (r)[next] (
+                rr => pure (Node (ll) (rr)))),
     })
   }
 
