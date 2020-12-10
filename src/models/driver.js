@@ -12,9 +12,9 @@ class NotFound extends Error {
   }
 }
 
-const rejectNull = value => value == null
-  ? F.reject (new NotFound ())
-  : F.resolve (value)
+const rejectNull = value =>
+  value == null ? F.reject (new NotFound ()) :
+  /* otherwise */ F.resolve (value)
 
 // ∷ MongoClient → String → StrMap ((...) → Future Error *)
 module.exports = client => collection => ({
@@ -107,19 +107,17 @@ module.exports = client => collection => ({
       .pipe (F.map (({ value }) => value))
   },
 
-  // ∷ ... → Null|Doc
-  'updateOne?' (filter, update, options) {
-    // TODO
-  },
+  // // ∷ ... → Null|Doc
+  // 'updateOne?' (filter, update, options) {
+  //   // TODO
+  // },
 
   withTransaction (fn /* ∷ ClientSession → Future x y */, options) {
     const acquire = F.resolve (client.startSession ())
     const dispose = session => F.node (done => session.endSession ({}, done))
     const consume = session => {
-      const [commitF, abortF] = [
-        F.node (done => session.commitTransaction (done)),
-        F.node (done => session.abortTransaction (done)),
-      ]
+      const commitF = F.node (done => session.commitTransaction (done))
+      const abortF = F.node (done => session.abortTransaction (done))
       session.startTransaction (options)
       return fn (session)
         .pipe (F.chain (result => F.and (F.resolve (result)) (commitF)))

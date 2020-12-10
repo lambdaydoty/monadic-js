@@ -23,6 +23,7 @@ module.exports = fromPairs ([
   create ('BadTimestamp', 'BadRequest', '04'),
   create ('BadBalance', 'BadRequest', '10'),
   create ('BadUtxoBalance', 'BadRequest', '11'),
+  create ('BadHeader', 'BadRequest', '20'),
 
   // 401
   create ('Unauthenticated', 'Unauthorized', '00'),

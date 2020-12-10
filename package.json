@@ -27,6 +27,7 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-mung": "^0.5.1",
+    "express-validator": "^6.8.0",
     "fluture": "^12.3.1",
     "fluture-express": "^3.1.0",
     "fluture-hooks": "^2.0.2",
