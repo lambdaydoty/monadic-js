@@ -31,7 +31,8 @@ const custom = {
   },
 }
 
-const LOCALS = [L.prop ('locals'), L.valueOr ({})]
+const putLocals = o => L.modify (['locals', L.valueOr ({})]) (S.concat (o))
+
 const { go, connect, get, put, lift, modify, hoist } = require ('momi')
 // connect ∷ Middleware → ((Req, Res, Next) → Unit)
 // go ∷ GeneratorFunction → Middleware
@@ -39,7 +40,7 @@ const { go, connect, get, put, lift, modify, hoist } = require ('momi')
 
 const { header, validationResult } = require ('express-validator')
 
-function putLocals (req, res, next) {
+function withLocals (req, res, next) {
   const { locals } = res
   Object.assign (req, { locals })
   next ()
@@ -53,7 +54,7 @@ const fromValidator = validator => go (function * (next) {
   return yield next
 })
 
-const queryValidator = fromValidator (
+const token = fromValidator (
   header ('X-Token')
     .isAlpha ()
 )
@@ -67,10 +68,10 @@ const validateAll = go (function * (next) {
   return yield next
 })
 
-const token = go (function * (next) {
+const auth = go (function * (next) {
   const req = yield get
   const token = req.get ('X-Token')
-  yield modify (L.modify (LOCALS) (S.concat ({ token })))
+  yield modify (putLocals ({ token }))
   return yield next
 })
 
@@ -87,7 +88,7 @@ const echo = go (function * (/* next */) {
 
 const clientid = go (function * (next) {
   const { body: { client_id: id } } = yield get
-  yield modify (L.modify (LOCALS) (S.concat ({ client_id: id })))
+  yield modify (putLocals ({ client_id: id }))
   return yield next
 })
 
@@ -95,28 +96,23 @@ const account = go (function * (next) {
   const { locals: { client, token } } = yield get
   const { Account } = require ('./models') (client) ('')
   yield lift (Account.findOne ({ token }))
-  yield modify (L.modify (LOCALS) (S.concat ({ account: 'test' })))
+  yield modify (putLocals ({ account: 'test' }))
   return yield next
 })
 
-const attempt = m => hoist (m) (F.coalesce (S.Left) (S.Right))
+const control = F.coalesce (S.Left) (S.Right)
+const attempt = m => hoist (m) (control)
 
 const transaction = go (function * (next) {
   const { locals: { client } } = yield get
-
   const session = client.startSession ()
   session.startTransaction ()
-
-  yield modify (L.modify (LOCALS) (S.concat ({ session })))
-
+  yield modify (putLocals ({ session }))
   const result = yield attempt (next)
-
   yield lift (S.isRight (result) ?
     F.node (done => session.commitTransaction (done)) :
     F.node (done => session.abortTransaction (done)))
-
   yield lift (F.node (done => session.endSession ({}, done)))
-
   return yield lift (S.either (F.reject) (F.resolve) (result))
   // const errorToResponse = e => ({
   //   status: e.status || 500,
@@ -158,8 +154,12 @@ module.exports = {
       .use (express.json ({ verify: saveraw }))
       .use (custom.saveclient (client))
       .use (custom.body ())
-      .use (putLocals)
-      .get ('/momi', connect (S.pipe ([echo, token, validateAll, queryValidator])))
+      .use (withLocals)
+      .get ('/momi', connect (S.pipe (S.reverse ([
+        token,
+        validateAll,
+        auth,
+        echo ]))))
       .post ('/transaction', connect (S.pipe (S.reverse ([
         token,
         account,
