@@ -78,7 +78,7 @@ const acquireMongodb = ([url, options]) => {
 
   function registerEvent (client) {
     const events = ['close', 'error', 'timeout', 'parseError']
-    events.forEach (ev => client.on (ev, x => log (`@event:${ev}`)))
+    events.forEach (ev => client.on (ev, _ => log (`@event:${ev}`)))
   }
 
   function Decimal128 () {
