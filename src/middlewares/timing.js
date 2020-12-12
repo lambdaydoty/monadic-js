@@ -1,43 +1,27 @@
-const [R, F, { middleware, Next }, $, { unchecked: S }] = [
-  require ('ramda'),
-  require ('fluture'),
-  require ('fluture-express'),
-  require ('sanctuary-def'),
-  require ('sanctuary'),
-]
-const V = require ('@rexform/validation')
-// const ROOT = '..'
-// const { BadTimestamp } = require (`${ROOT}/errors`)
+const { go, get, lift } = require ('momi')
+const F = require ('fluture')
+const S = require ('sanctuary')
+const $ = require ('sanctuary-def')
+const { BadTimestamp } = require ('../errors')
 
-const [Left, Right] = [
-  x => Object.assign (S.Left (x), { fold (f, g) { return S.either (f) (g) (this) } }),
-  x => Object.assign (S.Right (x), { fold (f, g) { return S.either (f) (g) (this) } }),
-]
+const delta = 5000
 
-module.exports = (delta = 5000) => middleware ((req, locals) => {
-  const { body } = req
+const inWindow = delta => now => value => (
+  now - delta <= value &&
+  now + delta >= value
+)
 
-  const now = Date.now ()
+module.exports = go (function * (next) {
+  const req = yield get
+  const { locals: { now } } = req
+  const { body: { timestamp } } = req
 
-  const typing = x => S.is ($.NonNegativeInteger) (x)
-    ? S.Right (x)
-    : S.Left ('The `timestamp` must be a unix timestamp within the window')
-  const timing = x => Math.abs (x - now) <= delta
-    ? S.Right (x)
-    : S.Left (`The \`timestamp\` is outside the window ${now}±${delta}`)
+  if (
+    !S.is ($.NonNegativeInteger) (timestamp) ||
+    !inWindow (delta) (now) (timestamp)
+  ) {
+    yield lift (F.reject (new BadTimestamp ()))
+  }
 
-  // ∷ Any → Validation [String] NonNegativeInteger
-  const timestamp = S.pipe ([
-    S.of (S.Either),
-    S.chain (typing),
-    S.chain (timing),
-    S.either (Left) (Right),
-    V.fromEither (0),
-  ])
-
-  Object.assign (req, {
-    body: R.over (R.lensProp ('timestamp')) (timestamp) (body),
-  })
-
-  return F.resolve (Next (locals))
+  return yield next
 })

@@ -1,20 +1,12 @@
-const [F, { middleware, Next }] = [
-  require ('fluture'),
-  require ('fluture-express'),
-]
-const V = require ('@rexform/validation')
-const { BadParameter } = require ('../errors')
+const F = require ('fluture')
+const { go, get, lift } = require ('momi')
+const { validationResult } = require ('express-validator')
+const { ValidationFailed } = require ('../errors')
 
-module.exports = middleware ((req, locals) => F.go (function * () {
-  const { body } = req
-
-  const invalid = es => F.reject (new BadParameter (es.join ('; ')))
-  const valid = x => F.resolve (x)
-
-  Object.assign (req, {
-    body: yield V.allProperties (body)
-      .fold (invalid, valid),
-  })
-
-  return Next (locals)
-}))
+module.exports = go (function * (next) {
+  const req = yield get
+  const formatter = ({ location, msg, param }) => `${location} ${param}: ${msg}`
+  const result = validationResult (req).formatWith (formatter)
+  if (!result.isEmpty ()) yield lift (F.reject (new ValidationFailed (`${result.array ()}`)))
+  return yield next
+})

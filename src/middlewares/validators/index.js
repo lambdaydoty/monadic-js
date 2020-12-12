@@ -1,13 +1,7 @@
 const { unchecked: S } = require ('sanctuary')
 
 const names = [
-//  'escape',
-  'load',
-  'token',
-  'auth',
-  'timing',
-  'transaction',
-  'validateAll',
+  'clientid',
 ]
 
 module.exports = S.fromPairs

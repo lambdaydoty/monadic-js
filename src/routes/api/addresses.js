@@ -1,43 +1,78 @@
 const express = require ('express')
-const [F, { middleware, Json }] = [
-  require ('fluture'),
-  require ('fluture-express'),
-]
-const { escape, token, auth, validateAll } = require ('../../middlewares')
-const { timing, clientid } = require ('../../middlewares')
+const { unchecked: S } = require ('sanctuary')
+const { timing, token, auth, validateAll, transaction } = require ('../../middlewares')
+const { clientid } = require ('../../middlewares/validators')
 const models = require ('../../models')
 
-const get = [escape, token, auth]
-const post = [...get, timing (), clientid]
-const Json200 = x => Json (200, x)
+const Json200 = o => ({
+  status: 200,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify (o),
+})
+
+const { connect, go, get, lift } = require ('momi')
 
 module.exports = express
   .Router ()
-  .get ('/:address/:client_id?', [
-    ...get,
-    timing (),
-    middleware ((req, locals) => {
-      const { account, currency, client } = locals
-      const { Address } = models (client) (currency.base || currency._id)
+  .get ('/:address/:client_id?', connect (S.pipe (S.reverse ([
+    token,
+    auth,
+    go (function * (/* next */) {
+      const req = yield get
+      const { locals: { client, currency, account } } = req
       const { params: { address, client_id: id } } = req
       const query = { currency: `${currency}`, account: `${account}` }
-      return Address
-        .findOne ({
-          ...query,
-          $or: [
-            { address: { $in: [address, address.toLowerCase ()] } },
-            { client_id: id },
-          ],
-        })
-        .pipe (F.map (Json200))
-    }),
-  ])
-  .post ('/', [
-    ...post,
+      const $address = { $or: [
+        { address: { $in: [address, address.toLowerCase ()] } },
+        { client_id: id },
+      ] }
+      const { Address } = models (client) (currency.base ?? currency._id)
+      const doc = yield lift (Address.findOne ({ ...query, ...$address }))
+      return Json200 (doc)
+    })]))))
+  .post ('/', connect (S.pipe (S.reverse ([
+    timing,
+    token,
+    auth,
+    clientid,
     validateAll,
-    middleware ((req, locals) => {
-      const { body } = req
-      const { client_id: id } = body
-      return F.resolve (Json200 ({ id }))
-    }),
-  ])
+    go (function * (/* next */) {
+      const { body: { client_id: id } } = yield get
+      return Json200 ({ id, message: 'dry_run_only' })
+    })]))))
+  .post ('/counting', connect (S.pipe (S.reverse ([
+    timing,
+    token,
+    auth,
+    clientid,
+    validateAll,
+    transaction,
+    go (accounting),
+    go (addressing),
+    ]))))
+
+function * accounting (next) {
+  const { locals: { client, session, account } } = yield get
+  const { Account } = models (client) ('')
+  const query = { _id: `${account}` }
+  const doc = yield lift (Account.updateOne (query, { $inc: { count: 1 } }, { session }))
+  console.log ('@accounting', doc.count)
+  return yield next
+}
+
+function * addressing () {
+  const CURRENCY = 'xyz'
+  const req = yield get
+  const { locals: { client, session, currency, account } } = req
+  const { body: { client_id: id } } = req
+  const { Address } = models (client) (CURRENCY)
+  const query = { currency: `${currency}`, account: `${account}` }
+  const values = {
+    ...query,
+    address: `*:+*:+${id}*:+*:+`,
+    client_id: id,
+  }
+  const doc = yield lift (Address.insertOne (values, { session }))
+  console.log ('@addressing', doc._id)
+  return Json200 (doc)
+}

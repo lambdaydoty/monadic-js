@@ -1,14 +1,13 @@
-// const { BadAccount, PermissionDenied } = require('../errors')
-const [F, { middleware, Next }] = [
-  require ('fluture'),
-  require ('fluture-express'),
-]
+const F = require ('fluture')
+const { go, get, lift } = require ('momi')
+const { BadAccount, PermissionDenied } = require ('../errors')
 
-module.exports = middleware ((req, locals) => F.go (function * () {
+module.exports = go (function * (next) {
+  const req = yield get
   const { account: user1 } = req
-  const { account: user2 } = locals
-  if (!user1) yield F.reject (new Error ('BadAccount1')) // new BadAccount()
-  if (!user2) yield F.reject (new Error ('BadAccount2')) // new BadAccount()
-  if (`${user1}` !== `${user2}`) yield F.reject (new Error ('PermissionDenied')) // throw new PermissionDenied()
-  return Next (locals)
-}))
+  const { locals: { account: user2 } } = req
+  if (!user1) yield lift (F.reject (new BadAccount ()))
+  if (!user2) yield lift (F.reject (new BadAccount ()))
+  if ('' + user1 !== '' + user2) yield lift (F.reject (new PermissionDenied ()))
+  return yield next
+})

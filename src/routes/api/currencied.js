@@ -12,6 +12,6 @@ const names = [
 ]
 
 module.exports = names.reduce (
-  (route, name) => route.use (`/${name}`, require (`./${name}`)),
+  (route, name) => route.use ('/' + name, require ('./' + name)),
   express.Router (),
 )
