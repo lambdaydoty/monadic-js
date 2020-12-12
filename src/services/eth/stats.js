@@ -1,5 +1,5 @@
-const [F] = [require ('fluture')]
-const [$] = [require ('sanctuary-def')]
+const F = require ('fluture')
+const $ = require ('sanctuary-def')
 
 const BN = require ('bignumber.js')
 const bn = (...args) => new BN (...args)

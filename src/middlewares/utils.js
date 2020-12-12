@@ -22,9 +22,16 @@ const fromValidator = validator => go (function * (next) {
   return yield next
 })
 
+const Json200 = o => ({
+  status: 200,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify (o),
+})
+
 module.exports = {
   attempt,
   addLocals,
   fromValidator,   // ∷ Validators → Middleware
   errorToResponse, // ∷ Error → Response
+  Json200,
 }
