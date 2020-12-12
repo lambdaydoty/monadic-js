@@ -1,4 +1,5 @@
 const express = require ('express')
+const L = require ('partial.lenses')
 const F = require ('fluture')
 const { unchecked: S } = require ('sanctuary')
 const { escape, timing, token, auth, validateAll, transaction } = require ('../../middlewares')
@@ -11,8 +12,29 @@ const { Conflict } = require ('../../errors')
 const { connect, go, get, lift } = require ('momi')
 const pipe_ = S.compose (S.pipe) (S.reverse)
 
+// fake
+function qbalance (_) {
+  return F.resolve ('' + 100 * Math.random ())
+}
+
 module.exports = express
   .Router ()
+  .get ('/', connect (pipe_ ([
+    token,
+    auth,
+    go (function * (/* next */) {
+      const { locals: { client, currency, account } } = yield get
+      const query = { currency: `${currency}`, account: `${account}` }
+      const { Address } = models (client) (currency.base ?? currency._id)
+      const docs = yield lift (Address
+        .aggregate ([{ $match: query }])
+        .pipe (F.map (S.map (doc => ({ ...doc, '_balance': qbalance (doc.address) }))))
+        .pipe (F.chain (L.traverse
+          (L.fromFantasyMonad (F.Future))
+          (S.I)
+          ([L.elems, '_balance']))))
+      return Json200 (docs)
+    })])))
   .get ('/:address/:client_id?', connect (pipe_ ([
     escape,
     token,
