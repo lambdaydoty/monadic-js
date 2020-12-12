@@ -1,7 +1,7 @@
 const { unchecked: S } = require ('sanctuary')
 
 const names = [
-//  'escape',
+  'escape',
   'load',
   'token',
   'auth',

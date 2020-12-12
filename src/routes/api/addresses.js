@@ -1,7 +1,7 @@
 const express = require ('express')
 const F = require ('fluture')
 const { unchecked: S } = require ('sanctuary')
-const { timing, token, auth, validateAll, transaction } = require ('../../middlewares')
+const { escape, timing, token, auth, validateAll, transaction } = require ('../../middlewares')
 const { clientid } = require ('../../middlewares/validators')
 const { Json200 } = require ('../../middlewares/utils')
 const models = require ('../../models')
@@ -14,6 +14,7 @@ const pipe_ = S.compose (S.pipe) (S.reverse)
 module.exports = express
   .Router ()
   .get ('/:address/:client_id?', connect (pipe_ ([
+    escape,
     token,
     auth,
     go (function * (/* next */) {
@@ -40,6 +41,7 @@ module.exports = express
       return Json200 ({ id, message: 'dry_run_only' })
     })])))
   .post ('/counting', connect (pipe_ ([
+    escape,
     timing,
     token,
     auth,
