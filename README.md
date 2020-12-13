@@ -1,5 +1,10 @@
 # monadic-js
 
+>
+> "If you have to ask, you will never know. If you know, you need only ask"
+> -- Reader Monad
+>
+
 Demo examples for working with
 
 * [fluture](https://github.com/fluture-js/Fluture) the monadic future implementation with helpers:
@@ -13,15 +18,17 @@ Demo examples for working with
 
 * [mongodb](https://mongodb.github.io/node-mongodb-native/3.6/api/)
 
-* [gcp-services]
+* gcp-services
   * [key-management-service](https://github.com/googleapis/nodejs-kms)
   * [secret-manager](https://github.com/googleapis/nodejs-secret-manager)
 
-and sanctuary ecosystem:
+and other FP libs:
 
-* sanctuary
+* libs
   * [sanctuary](https://sanctuary.js.org/)
   * [sanctuary-def](https://github.com/sanctuary-js/sanctuary-def)
+  * [monastic](https://github.com/dicearr/monastic)
+  * [partial-lenses](https://github.com/calmm-js/partial.lenses)
 
 ---
 
@@ -32,4 +39,4 @@ Demonstrate functional approaches like:
 * Use partial.lense's `traverse` extract future context out of documents.
 * Incorporate express's build-in, momi's, fluture-express's middlewares.
 * Incorporate express-validator's middlewares.
-* Asynchronous dynamic type-checking future's container types.
+* Use `bimap` to achieve asynchronous type-checking for future's container types.
