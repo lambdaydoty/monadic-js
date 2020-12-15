@@ -1,8 +1,7 @@
-const [F, FH, { bootstrap }] = [
-  require ('fluture'),
-  require ('fluture-hooks'),
-  require ('booture'),
-]
+const F = require ('fluture')
+const FH = require ('fluture-hooks')
+const { bootstrap } = require ('booture')
+const R = require ('ramda')
 
 require ('dotenv').config ()
 
@@ -34,7 +33,6 @@ const acquireGcp = ({
   secretNameForDbUrl,
   secretNameForUnikeyWithKMS,
 }) => F.attemptP (async _ => {
-  const R = require ('ramda')
   const { SecretManagerServiceClient } = require ('@google-cloud/secret-manager')
   const { KeyManagementServiceClient } = require ('@google-cloud/kms')
 
@@ -51,8 +49,7 @@ const acquireGcp = ({
     .then (R.view (secretLens))
     .then (toString ('utf8'))
 
-  const mongodb = [url, { useNewUrlParser: true, useUnifiedTopology: true }]
-  // [url, options]
+  const mongodb = { url }
 
   /* keychain */
 
@@ -72,9 +69,10 @@ const acquireGcp = ({
   return { mongodb, keychain }
 })
 
-const acquireMongodb = ([url, options]) => {
-  const R = require ('ramda')
+const acquireMongodb = ({ url }) => {
   const { MongoClient, Decimal128: D128 } = require ('mongodb')
+
+  const options = { useNewUrlParser: true, useUnifiedTopology: true }
 
   function registerEvent (client) {
     const events = ['close', 'error', 'timeout', 'parseError']
@@ -85,10 +83,10 @@ const acquireMongodb = ([url, options]) => {
     const BN = require ('bignumber.js')
     const util = require ('util')
     Object.assign (D128.prototype, {
-      toJSON: function () {
+      toJSON () {
         return new BN (this).toFixed ()
       },
-      [util.inspect.custom]: function () {
+      [util.inspect.custom] () {
         return `D128("${this.toJSON ()}")`
       },
     })
