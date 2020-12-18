@@ -32,15 +32,24 @@ const extendingError = name => (class extends Error {
 const ReceiptUnavailable = extendingError ('ReceiptUnavailable')
 const BlockPending = extendingError ('BlockPending')
 
+const BN = require ('bignumber.js')
 const web3Utils = require ('web3-utils')
 const abiDecoder = require ('abi-decoder')
 const erc20abi = require ('human-standard-token-abi')
 abiDecoder.addABI (erc20abi)
+BN.prototype['@@show'] = BN.prototype[require ('util').inspect.custom] = function () {
+  return `BN ("${this.toFixed ()}")`
+}
 
 const nullableToMaybe = x => x === null ? S.Nothing : S.Just (x)
 const nullableToFuture = error => x => x === null ? F.reject (error) : F.resolve (x)
 const predicateToFuture = pred => error => x => !pred (x) ? F.reject (error) : F.resolve (x)
 
+const $BN = $.NullaryType
+  ('BigNumber')
+  ('')
+  ([$.Object])
+  (x => BN.isBigNumber (x))
 const $Undefinedable = $.UnaryType
   ('Undefinedable')
   ('')
@@ -61,7 +70,7 @@ const $Event = $.NamedRecordType
   ({
     name: $.String,
     type: $.EnumType ('') ('') (['address', 'uint256']),
-    value: $.String,
+    value: $.String, // TODO
   })
 const $Log = $.NamedRecordType
   ('web4/Log')
@@ -88,7 +97,7 @@ const $Transaction = $.NamedRecordType
   ({
     hash: $TxHash,
     to: $.Maybe ($Address), // Nothing for `contract creation`
-    value: $.String, // TODO
+    value: $BN,
     timestamp: $.NonNegativeInteger,
     receipt: $Receipt,
   })
@@ -116,15 +125,15 @@ module.exports = function ({ rpc, etherscan }) {
   // ∷ NonNegativeInteger → Future Error Block
   const getBlockByNumber = def
     ([$.NonNegativeInteger, $FutureType])
-    (N => rpc.eth.getBlockByNumber (web3Utils.toHex (N), true)
-      .pipe (F.chain (predicateToFuture (isMined) (new BlockPending (`${N}`))))
+    (n => rpc.eth.getBlockByNumber (web3Utils.toHex (n), true)
+      .pipe (F.chain (predicateToFuture (isMined) (new BlockPending ('' + n))))
       .pipe (F.map (({ timestamp, transactions }) => transactions
         .map (({ hash, to, value }) =>
           ({
             internal: false,
             hash,
             to: nullableToMaybe (to),
-            value: web3Utils.fromWei (web3Utils.hexToNumberString (value)),
+            value: new BN (web3Utils.fromWei (web3Utils.hexToNumberString (value))),
             timestamp: web3Utils.hexToNumber (timestamp) * 1000,
             receipt: getTransactionReceipt (hash), // ∷ Future Error Receipt
           }))))
@@ -134,11 +143,11 @@ module.exports = function ({ rpc, etherscan }) {
   // ∷ NonNegativeInteger → Future Error Block
   const getInternalsByNumber = def
     ([$.NonNegativeInteger, $FutureType])
-    (N => etherscan.etherscan ({
+    (n => etherscan.etherscan ({
       module: 'account',
       action: 'txlistinternal',
-      startblock: `${N}`,
-      endblock: `${N}`,
+      startblock: '' + n,
+      endblock: '' + n,
       sort: 'asc' })
       .pipe (F.map (S.filter (({ value, isError, errCode, type }) =>
         (
@@ -152,7 +161,7 @@ module.exports = function ({ rpc, etherscan }) {
           internal: true,
           hash,
           to: nullableToMaybe (to),
-          value: web3Utils.fromWei (value),
+          value: new BN (web3Utils.fromWei (value)),
           timestamp: +timeStamp * 1000,
           receipt: {
             status: true,
@@ -167,20 +176,40 @@ module.exports = function ({ rpc, etherscan }) {
   // a Left Block stands for untraced transactions
   const getTransactions = def
     ([$.NonNegativeInteger, $FutureType])
-    (N => F.go (function * () {
-      const txs = yield getBlockByNumber (N)
+    (n => F.go (function * () {
+      const txs = yield getBlockByNumber (n)
       return S.bimap
         (S.K (txs))
         (S.concat (txs))
-        (yield control (getInternalsByNumber (N)))
+        (yield control (getInternalsByNumber (n)))
       })
       .pipe (returns ($.Error) ($.Either ($Block) ($Block))))
+
+  // ∷ Number → Future Error BN
+  const getGasPrice = def
+    ([$.PositiveFiniteNumber, $FutureType])
+    (multiplier => rpc.eth.gasPrice ()
+      .pipe (F.map (q => new BN (web3Utils.hexToNumberString (q))))
+      .pipe (F.map (x => x
+        .times (multiplier)
+        .integerValue (BN.ROUND_CEIL)))
+      .pipe (returns ($.Error) ($BN)))
+
+  // ∷ NonNegativeInteger → Future Error NonNegativeInteger
+  const getBlockNumber = def
+    ([$.NonNegativeInteger, $FutureType])
+    (confirmation => rpc.eth.blockNumber ()
+      .pipe (F.map (q => +web3Utils.hexToNumberString (q)))
+      .pipe (F.map (S.sub (confirmation)))
+      .pipe (returns ($.Error) ($.NonNegativeInteger)))
 
   return {
     // getTransactionReceipt,
     // getBlockByNumber,
     // getInternalsByNumber,
     getTransactions,
+    getGasPrice,
+    getBlockNumber,
     ...{ $Transaction, $Block, $Receipt, $TxHash, $Address, $Log, $Event },
   }
 }
@@ -197,18 +226,6 @@ module.exports = function ({ rpc, etherscan }) {
 
 // const GAS = 21000 // transaction gas for eth is a constant
 // const web3Provider = new Provider (ETH_PROVIDER)
-
-// // ∷ Promise Error WeiString
-// function getGasPrice (multiplier = '1.2') {
-//   const rpc = getRpc (ETH_PROVIDER)
-//   const parse = q => bn (q /* ∷ Quantity in Wei */)
-//     .times (multiplier)
-//     .integerValue ()
-//     .toFixed ()
-//   return rpc.eth.gasPrice () // ∷ Future Error Quantity
-//     .pipe (F.map (parse))
-//     .pipe (F.promise)
-// }
 
 // // ∷ Number → Currency → String → Promise Error BN
 // function getBalance (confirmation = 25 /* blockQT = 'latest' */) {

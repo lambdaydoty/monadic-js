@@ -87,7 +87,7 @@ const acquireMongodb = ({ url }) => {
         return new BN (this).toFixed ()
       },
       [util.inspect.custom] () {
-        return `D128("${this.toJSON ()}")`
+        return `D128 ("${this.toJSON ()}")`
       },
     })
   }
