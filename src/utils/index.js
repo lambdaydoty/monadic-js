@@ -6,12 +6,22 @@ const [F, FN, { unchecked: S }] = [
 const crypto = require ('crypto')
 
 module.exports = {
+  Do, // ∷ TypeRepresentation → Generator → Monad
   get,
   post,
   sendForm,
   rand,
   hmac,
-  Do, // ∷ TypeRepresentation → Generator → Monad
+  extendError,
+}
+
+function extendError (name) {
+  return (class extends Error {
+    constructor (message) {
+      super (message)
+      this.name = name
+    }
+  })
 }
 
 function error (timeout) {

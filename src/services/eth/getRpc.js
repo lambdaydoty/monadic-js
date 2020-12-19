@@ -20,36 +20,32 @@ const imToJson = im => F.resolve (im)
   .pipe (F.chain (FN.bufferResponse ('utf8')))  // ∷ Future Error String
   .pipe (F.chain (F.encase (JSON.parse)))       // ∷ Future Error Json
 
-const [HEADER, JSONRPC2] = [
-  { 'Content-Type': 'application/json' },
-  { 'jsonrpc': '2.0', 'id': 1 },
-]
+const HEADER = { 'Content-Type': 'application/json' }
+const JSONRPC2 = { 'jsonrpc': '2.0', 'id': 1 }
 
-const $RpcError = $.RecordType ({ 'code': $.Integer, 'message': $.String })
+const { extendError } = require ('../../utils')
+const RpcResponse = extendError ('RpcResponse')
+const $FutureType = F$.FutureType ($.Unknown) ($.Unknown)
 const $RpcResponse = $.RecordType (S.unchecked.map (x => $.EnumType ('') ('') ([x])) (JSONRPC2))
 const parseJsonRpc = def
-  ([$RpcResponse, F$.FutureType ($RpcError) ($.Any)])
-  (({ result, error }) => !(error === undefined) ? F.reject (error) : F.resolve (result))
+  ([$RpcResponse, $FutureType])
+  (({ result, error }) => error !== undefined ? F.reject (new RpcResponse (JSON.stringify (error))) : F.resolve (result))
 
 const bindProxyHandler = handler => new Proxy ({}, { get: handler })
 
-function getRpc (
-  provider = 'https://api.etherscan.io/api?module=proxy&apikey=',
-  promise = false,
-) {
+function getRpc (provider = 'https://api.etherscan.io/api?module=proxy&apikey=') {
   return bindProxyHandler (function (_, moduleName) {
     return bindProxyHandler (function (__, methodName) {
-      return function (...params) {
+      return function (params = []) {
         const method = `${moduleName}_${methodName}`
         const request = /etherscan/.test (provider) ?
           FN.retrieve (provider + '&' + qstring (method) (params)) ({}) :
           FN.sendJson ('POST') (provider) (HEADER) ({ ...JSONRPC2, method, params })
-        const timer = F.rejectAfter (5000) (new Error ('Provider timeout: ' + provider))
+        const timer = F.rejectAfter (5000) (new RpcResponse ('Provider timeout: ' + provider))
         return request
           .pipe (F.chain (imToJson))
           .pipe (F.chain (parseJsonRpc))
           .pipe (F.race (timer))
-          .pipe (promise ? F.promise : S.I)
       }
     })
   })
