@@ -102,6 +102,7 @@ const $Transaction = $.NamedRecordType
   ([])
   ({
     type: $.EnumType ('') ('') (['normal', 'internal', 'erc20']),
+    currency: $.NonEmpty ($.String),
     hash: $TxHash,
     to: $.Maybe ($Address), // `Nothing` for `contract creation`
     value: $BN,
@@ -144,18 +145,16 @@ module.exports = function ({ rpc, etherscan }) {
             (name.replace ('_', ''))
             (
               type === 'address' ? S.Just (value) :
-              type === 'uint256' ? new BN (value).shiftedBy (-decimals) :
-              /* otherwise */ null
+              type === 'uint256' ? new BN (value).shiftedBy (-decimals) : null
             ))),
         S_.map (S_.fromPairs),
-        S.map (S.unchecked.insert ('type') ('erc20')),
-        S.map (S.unchecked.insert ('symbol') (symbol)),
+        S.map (S.unchecked.concat ({ type: 'erc20', currency: symbol })),
       ])
     return S.justs (S.lift2 (match) (currencies) (logs))
   }
   // ∷ SubTransaction → Transaction
-  const subTxToTx = ({ hash, timestamp, receipt: { logs: { to, type, value, symbol }, ...etc } }) =>
-    ({ symbol, type, hash, to, value, timestamp, receipt: { ...etc, logs: [] } })
+  const subTxToTx = ({ hash, timestamp, receipt: { logs: { to, type, value, currency }, ...etc } }) =>
+    ({ type, currency, hash, to, value, timestamp, receipt: { ...etc, logs: [] } })
 
   // ∷ TxHash → Future Error Receipt
   const getTransactionReceipt = def
@@ -173,21 +172,16 @@ module.exports = function ({ rpc, etherscan }) {
   const lenseEveryReceipt = [L.elems, 'receipt']
   const lenseSubTx = ['receipt', 'logs']
 
-  const currencies = [{
-    address: '0xbb2cea206347d168dc3e93eb34bd79b185d4eca3',
-    symbol: 'bgc21-erc20',
-    decimals: 5,
-  }] // TODO
-
-  // ∷ NonNegativeInteger → Future Error Block
+  // ∷ [Currency] → NonNegativeInteger → Future Error Block
   const getBlockByNumber = def
-    ([$.NonNegativeInteger, $FutureType])
-    (n => rpc.eth.getBlockByNumber ([U.toHex (n), true])
+    ([$.Array ($Currency), $.NonNegativeInteger, $FutureType])
+    (currencies => n => rpc.eth.getBlockByNumber ([U.toHex (n), true])
       .pipe (F.chain (predicateToFuture (isMined) (new BlockPending ('' + n))))
       .pipe (F.map (({ timestamp, transactions }) => transactions
         .map (({ hash, to, value }) =>
           ({
             type: 'normal',
+            currency: 'eth',
             hash,
             to: nullableToMaybe (to),
             value: new BN (U.fromWei (U.hexToNumberString (value))),
@@ -221,6 +215,7 @@ module.exports = function ({ rpc, etherscan }) {
       .pipe (F.map (S.map (({ hash, to, value, timeStamp, gasUsed }) =>
         ({
           type: 'internal',
+          currency: 'eth',
           hash,
           to: nullableToMaybe (to),
           value: new BN (U.fromWei (value)),
@@ -233,13 +228,13 @@ module.exports = function ({ rpc, etherscan }) {
         }))))
       .pipe (returns ($.Error) ($Block)))
 
-  // ∷ NonNegativeInteger → Future Error (Either Block Block)
+  // ∷ [$Currency] → NonNegativeInteger → Future Error (Either Block Block)
   // a Right Block stands for traced transactions
   // a Left Block stands for untraced transactions
   const getTransactions = def
-    ([$.NonNegativeInteger, $FutureType])
-    (n => F.go (function * () {
-      const txs = yield getBlockByNumber (n)
+    ([$.Array ($Currency), $.NonNegativeInteger, $FutureType])
+    (currencies => n => F.go (function * () {
+      const txs = yield getBlockByNumber (currencies) (n)
       return S.bimap
         (S.K (txs))
         (S.concat (txs))
