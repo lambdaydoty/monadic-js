@@ -192,9 +192,9 @@ module.exports = function ({ rpc, etherscan }) {
             to: nullableToMaybe (to),
             value: new BN (U.fromWei (U.hexToNumberString (value))),
             timestamp: U.hexToNumber (timestamp) * 1000,
-            receipt: getTransactionReceipt (hash), // ∷ Future Error Receipt
+            receipt: hash, // prepare for traverse
           }))))
-      .pipe (F.chain (L.traverse (LFuture) (I) (lenseEveryReceipt)))
+      .pipe (F.chain (L.traverse (LFuture) (h => getTransactionReceipt (h)) (lenseEveryReceipt)))
       .pipe (F.map (S.chain (S.ap (S.append) (S.pipe
         ([
           L.traverse (JsArray) (parseSubTx (currencies)) (lenseSubTx),
