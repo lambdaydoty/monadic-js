@@ -1,8 +1,6 @@
-const [F, FN, { unchecked: S }] = [
-  require ('fluture'),
-  require ('fluture-node'),
-  require ('sanctuary'),
-]
+const { unchecked: S } = require ('sanctuary')
+const F = require ('fluture')
+const FN = require ('fluture-node')
 const crypto = require ('crypto')
 
 module.exports = {
@@ -36,12 +34,14 @@ function incomingMessageToJson (im) {
     .pipe (F.chain (F.encase (JSON.parse)))               // ∷ Future Error Json
 }
 
+// TODO: currying
 function get (url, header = {}, timeout = 800) {
   return FN.retrieve (url) (header)
     .pipe (F.chain (incomingMessageToJson))                     // ∷ Future Error Json
     .pipe (F.race (F.rejectAfter (timeout) (error (timeout))))  // ∷ Future Error Json
 }
 
+// TODO: currying & `content-type`
 function post (url, header, json = {}, timeout = 1000) {
   return FN.sendJson ('POST') (url) (header) (json)
     .pipe (F.chain (incomingMessageToJson))                     // ∷ Future Error Json
@@ -55,7 +55,6 @@ function sendForm (url, header, form = {}, timeout = 1000) {
 }
 
 function rand (bits = 32 * 8) {
-  const crypto = require ('crypto')
   return crypto
     .randomBytes (Math.ceil (bits / 8))
     .toString ('hex')

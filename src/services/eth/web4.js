@@ -60,23 +60,32 @@ const $Data = bits => $.NullaryType
   (x => S.test (/^(0x|0X)[a-fA-F0-9]*$/) (x) && x.length === 2 + bits / 4)
 const $TxHash = $Data (256)
 const $Address = $Data (160)
-const $Event = $.NamedRecordType
-  ('web4/Event')
+const $SolitidyType = $.EnumType
+  ('SolidityType')
+  ('https://docs.soliditylang.org/en/develop/types.html')
+  (['address', 'uint256'])
+const $EventParamValue = $.NullaryType
+  ('web4/EventParamValue')
+  ('')
+  ([])
+  (x => S.is ($BN) (x) || S.is ($.Maybe ($Address)))
+const $EventParam = $.NamedRecordType
+  ('web4/EventParam')
   ('')
   ([])
   ({
-    name: $.String,
-    type: $.EnumType ('') ('') (['address', 'uint256']),
-    value: $.String, // TODO
-  })
-const $Log = $.NamedRecordType
+    name: $.String,           // e.g. `_from`   | `_to`     | `_value`
+    type: $SolitidyType,      // e.g. `address` | `address` | `uint256`
+    value: $.String, // Mixed // e.g. `0x9f6..` | `0x811..` | `10000000`
+  })                 // event Transfer(address indexed _from, address indexed _to, uint256 _value)
+const $EventLog = $.NamedRecordType
   ('web4/Log')
   ('')
   ([])
   ({
-    name: $.String,
-    events: $.Array ($Event),
-    address: $Address,
+    name: $.String,                // e.g. `Transfer`
+    events: $.Array ($EventParam), // e.g. [...]
+    address: $Address,             // e.g. `0xbb2cea206347d168dc3e93eb34bd79b185d4eca3` (contract address)
   })
 const $Receipt = $.NamedRecordType
   ('web4/Receipt')
@@ -85,15 +94,16 @@ const $Receipt = $.NamedRecordType
   ({
     status: $.Boolean,
     gasUsed: $.NonNegativeInteger,
-    logs: $.Array ($Log),
+    logs: $.Array ($EventLog),
   })
 const $Transaction = $.NamedRecordType
   ('web4/Transaction')
   ('')
   ([])
   ({
+    type: $.EnumType ('') ('') (['normal', 'internal', 'erc20']),
     hash: $TxHash,
-    to: $.Maybe ($Address), // Nothing for `contract creation`
+    to: $.Maybe ($Address), // `Nothing` for `contract creation`
     value: $BN,
     timestamp: $.NonNegativeInteger,
     receipt: $Receipt,
@@ -109,11 +119,43 @@ const $Currency = $.NamedRecordType
     decimals: $.NonNegativeInteger,
   })
 
-const S_ = create ({ ...opts, env: [...env, $Undefinedable ($Log)] })
+const types = { $Transaction, $Block, $Receipt, $TxHash, $Address, $EventLog, $EventParam, $Currency }
+
+const JsArray = {
+  of: x => [x],
+  map: (f, xs) => xs.map (x => f (x)),
+}
 
 module.exports = function ({ rpc, etherscan }) {
   const isLogged = log => log !== undefined
   const isMined = ({ number: q }) => q !== null
+  const S_ = create ({ ...opts, env: [...env, $Undefinedable ($EventLog), $EventParamValue] })
+
+  // ∷ [Currency] → [EventLog] → [SubTransaction]
+  const parseSubTx = currencies => logs => {
+    // ∷ Currency → EventLog → Maybe SubTransaction
+    const match = ({ address: contract, decimals, symbol }) => S.pipe
+      ([
+        S.of (S.Maybe),
+        S.filter (({ address: sendto }) => sendto === contract),
+        S.filter (({ name: eventName }) => eventName === 'Transfer'),
+        S_.map (({ events: eventParameters }) => eventParameters
+          .map (({ name, type, value }) => S.Pair
+            (name.replace ('_', ''))
+            (
+              type === 'address' ? S.Just (value) :
+              type === 'uint256' ? new BN (value).shiftedBy (-decimals) :
+              /* otherwise */ null
+            ))),
+        S_.map (S_.fromPairs),
+        S.map (S.unchecked.insert ('type') ('erc20')),
+        S.map (S.unchecked.insert ('symbol') (symbol)),
+      ])
+    return S.justs (S.lift2 (match) (currencies) (logs))
+  }
+  // ∷ SubTransaction → Transaction
+  const subTxToTx = ({ hash, timestamp, receipt: { logs: { to, type, value, symbol }, ...etc } }) =>
+    ({ symbol, type, hash, to, value, timestamp, receipt: { ...etc, logs: [] } })
 
   // ∷ TxHash → Future Error Receipt
   const getTransactionReceipt = def
@@ -128,6 +170,15 @@ module.exports = function ({ rpc, etherscan }) {
         })))
       .pipe (returns ($.Error) ($Receipt)))
 
+  const lenseEveryReceipt = [L.elems, 'receipt']
+  const lenseSubTx = ['receipt', 'logs']
+
+  const currencies = [{
+    address: '0xbb2cea206347d168dc3e93eb34bd79b185d4eca3',
+    symbol: 'bgc21-erc20',
+    decimals: 5,
+  }] // TODO
+
   // ∷ NonNegativeInteger → Future Error Block
   const getBlockByNumber = def
     ([$.NonNegativeInteger, $FutureType])
@@ -136,14 +187,19 @@ module.exports = function ({ rpc, etherscan }) {
       .pipe (F.map (({ timestamp, transactions }) => transactions
         .map (({ hash, to, value }) =>
           ({
-            internal: false,
+            type: 'normal',
             hash,
             to: nullableToMaybe (to),
             value: new BN (U.fromWei (U.hexToNumberString (value))),
             timestamp: U.hexToNumber (timestamp) * 1000,
             receipt: getTransactionReceipt (hash), // ∷ Future Error Receipt
           }))))
-      .pipe (F.chain (L.traverse (LFuture) (I) ([L.elems, 'receipt'])))
+      .pipe (F.chain (L.traverse (LFuture) (I) (lenseEveryReceipt)))
+      .pipe (F.map (S.chain (S.ap (S.append) (S.pipe
+        ([
+          L.traverse (JsArray) (parseSubTx (currencies)) (lenseSubTx),
+          S.map (subTxToTx),
+        ])))))
       .pipe (returns ($.Error) ($Block)))
 
   // ∷ NonNegativeInteger → Future Error Block
@@ -164,7 +220,7 @@ module.exports = function ({ rpc, etherscan }) {
         ))))
       .pipe (F.map (S.map (({ hash, to, value, timeStamp, gasUsed }) =>
         ({
-          internal: true,
+          type: 'internal',
           hash,
           to: nullableToMaybe (to),
           value: new BN (U.fromWei (value)),
@@ -236,7 +292,7 @@ module.exports = function ({ rpc, etherscan }) {
     getGasPrice,
     getBlockNumber,
     getBalance,
-    ...{ $Transaction, $Block, $Receipt, $TxHash, $Address, $Log, $Event },
+    ...types,
     eth,
   }
 }
@@ -253,46 +309,6 @@ module.exports = function ({ rpc, etherscan }) {
 
 // const GAS = 21000 // transaction gas for eth is a constant
 // const web3Provider = new Provider (ETH_PROVIDER)
-
-// // ∷ Number → Currency → String → Promise Error BN
-// function getBalance (confirmation = 25 /* blockQT = 'latest' */) {
-//   return function ({ _id: currency, info = {} }) {
-//     return async function (address) {
-//       const rpc = getRpc (ETH_PROVIDER, true)
-//       const blockN = '0x' + new BN (await rpc.eth.blockNumber ())
-//         .minus (confirmation)
-//         .toString (16)
-
-//       if (currency === 'eth') {
-//         return new BN (await rpc.eth.getBalance (address, blockN))
-//           .shiftedBy (-18)
-//       } else {
-//         const { address: to, decimals } = info
-//         const data = new Contract (erc20abi, to)
-//           .methods
-//           .balanceOf (address)
-//           .encodeABI ()
-//         return new BN (await rpc.eth.call ({ to, data }, blockN))
-//           .shiftedBy (-decimals)
-//       }
-//     }
-//   }
-// }
-
-// function getBalanceIncrement (blockNumber) {
-//   return async function (address) {
-//     const rpc = getRpc (ETH_PROVIDER, true)
-//     const current = '0x' + bn (blockNumber).toString (16)
-//     const previous = '0x' + bn (blockNumber - 1).toString (16)
-//     const [balance1, balance0] = [
-//       await rpc.eth.getBalance (address, current),
-//       await rpc.eth.getBalance (address, previous),
-//     ]
-//     return bn (balance1)
-//       .minus (balance0)
-//       .shiftedBy (-18)
-//   }
-// }
 
 // async function sendSignedTransaction (hex) {
 //   const [tag, log] = ['@web3.sendTrx', require ('../../log')]

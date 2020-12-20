@@ -20,13 +20,13 @@ const imToJson = im => F.resolve (im)
   .pipe (F.chain (FN.bufferResponse ('utf8')))  // ∷ Future Error String
   .pipe (F.chain (F.encase (JSON.parse)))       // ∷ Future Error Json
 
-const HEADER = { 'Content-Type': 'application/json' }
-const JSONRPC2 = { 'jsonrpc': '2.0', 'id': 1 }
+const Header = { 'Content-Type': 'application/json' }
+const JsonRpc2 = { 'jsonrpc': '2.0', 'id': 1 }
 
 const { extendError } = require ('../../utils')
 const RpcResponse = extendError ('RpcResponse')
 const $FutureType = F$.FutureType ($.Unknown) ($.Unknown)
-const $RpcResponse = $.RecordType (S.unchecked.map (x => $.EnumType ('') ('') ([x])) (JSONRPC2))
+const $RpcResponse = $.RecordType (S.unchecked.map (x => $.EnumType ('') ('') ([x])) (JsonRpc2))
 const parseJsonRpc = def
   ([$RpcResponse, $FutureType])
   (({ result, error }) => error !== undefined ? F.reject (new RpcResponse (JSON.stringify (error))) : F.resolve (result))
@@ -40,7 +40,7 @@ function getRpc (provider = 'https://api.etherscan.io/api?module=proxy&apikey=')
         const method = `${moduleName}_${methodName}`
         const request = /etherscan/.test (provider) ?
           FN.retrieve (provider + '&' + qstring (method) (params)) ({}) :
-          FN.sendJson ('POST') (provider) (HEADER) ({ ...JSONRPC2, method, params })
+          FN.sendJson ('POST') (provider) (Header) ({ ...JsonRpc2, method, params })
         const timer = F.rejectAfter (5000) (new RpcResponse ('Provider timeout: ' + provider))
         return request
           .pipe (F.chain (imToJson))
