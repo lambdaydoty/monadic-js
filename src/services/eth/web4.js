@@ -1,10 +1,4 @@
 // XXX: work in progress
-/* eslint func-call-spacing: ["error", "always"] */
-/* eslint no-multi-spaces: ["error", { ignoreEOLComments: true }] */
-/* eslint no-unexpected-multiline: ["off"] */
-/* eslint indent: ["off"] */
-/* eslint operator-linebreak: ["error", "after"] */
-/* eslint func-call-spacing: ["error", "always", {"allowNewlines": true}] */
 /* boilerplate for sanctuary env */
 const L = require ('partial.lenses')
 const F = require ('fluture')
@@ -22,6 +16,10 @@ const control = F.coalesce (S.Left) (S.Right)
 const returns = type1 => type2 => S.bimap
   (def ([$.Any, type1]) (I))
   (def ([$.Any, type2]) (I))
+const JsArray = {
+  of: x => [x],
+  map: (f, xs) => xs.map (x => f (x)),
+}
 
 const { extendError } = require ('../../utils')
 const ReceiptUnavailable = extendError ('ReceiptUnavailable')
@@ -54,7 +52,7 @@ const $Undefinedable = $.UnaryType
   (_ => true)
   (x => x === undefined ? [] : [x])
 const $Data = bits => $.NullaryType
-  (`Data(${bits})`)
+  (`Data (${bits})`)
   ('')
   ([$.String])
   (x => S.test (/^(0x|0X)[a-fA-F0-9]*$/) (x) && x.length === 2 + bits / 4)
@@ -121,11 +119,6 @@ const $Currency = $.NamedRecordType
   })
 
 const types = { $Transaction, $Block, $Receipt, $TxHash, $Address, $EventLog, $EventParam, $Currency }
-
-const JsArray = {
-  of: x => [x],
-  map: (f, xs) => xs.map (x => f (x)),
-}
 
 module.exports = function ({ rpc, etherscan }) {
   const isLogged = log => log !== undefined
