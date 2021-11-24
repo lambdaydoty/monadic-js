@@ -1,4 +1,5 @@
 // XXX: work in progress
+
 /* boilerplate for sanctuary env */
 const L = require ('partial.lenses')
 const F = require ('fluture')
@@ -31,6 +32,7 @@ const U = require ('web3-utils')
 const Contract = require ('web3-eth-contract')
 const abiDecoder = require ('abi-decoder')
 const erc20abi = require ('human-standard-token-abi')
+const erc721abi = require ('non-fungible-token-abi').MintableNonFungibleToken
 abiDecoder.addABI (erc20abi)
 BN.prototype['@@show'] = BN.prototype[require ('util').inspect.custom] = function () {
   return `BN ("${this.toFixed ()}")`
@@ -134,7 +136,7 @@ module.exports = function ({ rpc, etherscan }) {
         S.filter (({ address: sendto }) => sendto === contract),
         S.filter (({ name: eventName }) => eventName === 'Transfer'),
         S_.map (({ events: eventParameters }) => eventParameters
-          .map (({ name, type, value }) => S.Pair
+          .map (({ name, type, value }) => S.Pair // ∷ Pair (String) ($EventParamValue)
             (name.replace ('_', ''))
             (
               type === 'address' ? S.Just (value) :
@@ -254,7 +256,7 @@ module.exports = function ({ rpc, etherscan }) {
       .pipe (F.map (S.sub (confirmation)))
       .pipe (returns ($.Error) ($.NonNegativeInteger)))
 
-  // ∷ Address → NonNegativeInteger → Address → Future Error BN
+  // ∷ Currency → NonNegativeInteger → Address → Future Error BN
   const getBalance = def
     ([$Currency, $.NonNegativeInteger, $Address, $FutureType])
     (currency => n => address => ((currency.address === eth.address) ?
@@ -272,6 +274,25 @@ module.exports = function ({ rpc, etherscan }) {
       .pipe (F.map (x => x.shiftedBy (-currency.decimals)))
       .pipe (returns ($.Error) ($BN)))
 
+  // ∷ Address → BN → Future Error (Maybe Address)
+  const getOwnerOf = def
+    ([$Address, $BN, $FutureType])
+    (contractAddr => tokenId => rpc.eth.call
+      ([
+        {
+          to: contractAddr,
+          data: new Contract (erc721abi, contractAddr)
+            .methods
+            .ownerOf (tokenId.toString (10))
+            .encodeABI (),
+        },
+        'latest', // TODO
+      ])
+      .pipe (F.bichain
+        (e => S.test (/nonexistent token/) (e.message) ? F.resolve (S.Nothing) : F.reject (e))
+        (x => F.resolve (S.Just (x))))
+      .pipe (returns ($.Error) ($.Maybe ($.String))))
+
   return {
     // getTransactionReceipt,
     // getBlockByNumber,
@@ -280,6 +301,7 @@ module.exports = function ({ rpc, etherscan }) {
     getGasPrice,
     getBlockNumber,
     getBalance,
+    getOwnerOf,
     ...types,
     eth,
   }

@@ -145,6 +145,8 @@ const program = withServices (({ app, config }) => F.Future ((rej, res) => {
   const onListen = () => console.log (`Server started at port ${port}.`)
   const noop = () => {}
 
+  graphql (app)
+
   const server = app.listen (+port, onListen)
   server.keepAliveTimeout = 650 * 1000
   server.headersTimeout = 654 * 1000
@@ -155,3 +157,39 @@ const program = withServices (({ app, config }) => F.Future ((rej, res) => {
 }))
 
 F.fork (console.error) (console.log) (program)
+
+function graphql (app) {
+  const { ApolloServer, gql } = require ('apollo-server-express')
+
+  let notes = [
+    { id: '1', content: 'This is a note', author: 'Adam Scott' },
+    { id: '2', content: 'This is another note', author: 'Harlow Everly' },
+    { id: '3', content: 'Oh hey look, another note!', author: 'Riley Harrison' }
+  ]
+
+  const typeDefs = gql`
+    type Query {
+      hello: String!
+      notes: [Note!]!
+      note (id: ID!): Note!
+    }
+    type Note {
+      id: ID!
+      content: String!
+      author: String!
+    }
+  `
+  const resolvers = {
+    Query: {
+      hello: () => 'Hello, World!',
+      notes: () => notes,
+      note: (_parent, args) => {
+        return notes.find (note => note.id === args.id)
+      },
+    },
+  }
+
+  const server = new ApolloServer ({ typeDefs, resolvers })
+
+  server.applyMiddleware ({ app, path: '/bpi' })
+}

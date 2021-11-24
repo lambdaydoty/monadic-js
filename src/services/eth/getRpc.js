@@ -1,11 +1,6 @@
-// getRpc ∷ (Provider, Promised?) → Future Error Result
-module.exports = getRpc
+module.exports = getRpc // ∷ (Provider, Promised?) → Future Error Result
+
 /* biolerplate */
-/* eslint func-call-spacing: ["error", "always", {"allowNewlines": true}] */
-/* eslint no-multi-spaces: ["error", { ignoreEOLComments: true }] */
-/* eslint indent: ["off"] */
-/* eslint no-unexpected-multiline: ["off"] */
-/* eslint operator-linebreak: ["error", "after"] */
 const F$ = require ('fluture-sanctuary-types')
 const F = require ('fluture')
 const FN = require ('fluture-node')

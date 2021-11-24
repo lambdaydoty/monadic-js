@@ -3,10 +3,12 @@ const { unchecked: S } = require ('sanctuary')
 const daggy = require ('daggy')
 const { Do } = require ('../src/utils')
 
-const Tree = daggy.taggedSum ('Tree', {
-  Leaf: ['a'],
-  Node: ['l', 'r'],
-})
+const Tree = daggy.taggedSum (
+  'Tree',
+  {
+    Leaf: ['a'],
+    Node: ['l', 'r'],
+  })
 
 const Leaf = x => Tree.Leaf (x)
 const Node = x => y => Tree.Node (x, y)
@@ -36,14 +38,15 @@ console.log
   const next = 'fantasy-land/chain'
 
   function relabel (t) {
-    return t.cata ({
-      Leaf: x => M.State (
-            i => ({ value: Leaf (S.Pair (i) (x)), state: i + 1 }),
-      ),
-      Node: (l, r) => relabel (l)[next] (
-                ll => relabel (r)[next] (
-                rr => pure (Node (ll) (rr)))),
-    })
+    return t.cata
+      ({
+        Leaf: x => M.State (
+          i => ({ value: Leaf (S.Pair (i) (x)), state: i + 1 }),
+        ),
+        Node: (l, r) => relabel (l)[next] (
+          ll => relabel (r)[next] (
+            rr => pure (Node (ll) (rr)))),
+      })
   }
 
   console.log
@@ -55,21 +58,42 @@ console.log
   const DoM = Do (M.State)
 
   function relabel (t) {
-    return t.cata ({
-      Leaf: x => DoM (function * () {
-        const i = yield M.get
-        yield M.put (i + 1)
-        return Leaf (S.Pair (i) (x))
-      }),
-      Node: (l, r) => DoM (function * () {
-        const ll = yield relabel (l)
-        const rr = yield relabel (r)
+    return t.cata
+      ({
+        Leaf: x => DoM (function * () {
+          const i = yield M.get
+          yield M.put (i + 1)
+          return Leaf (S.Pair (i) (x))
+        }),
+        Node: (l, r) => DoM (function * () {
+          const ll = yield relabel (l)
+          const rr = yield relabel (r)
         return Node (ll) (rr)
-      }),
-    })
+        }),
+      })
   }
 
   console.log
     (show
       (M.evalState (0) (relabel (example))))
+}) ()
+
+;(function UseCPS () {
+  // relabel ∷ Tree a → Integer → Continuation
+  const relabel = t => i => conti => t.cata
+    ({
+      Leaf: x => conti ({ tree: Leaf (S.Pair (i) (x)), counter: i + 1 }),
+      Node: (l, r) => relabel
+        (l)
+        (i)
+        (({ tree: ll, counter: i1 }) => relabel
+          (r)
+          (i1)
+          (({ tree: rr, counter: i2 }) => conti ({ tree: Node (ll) (rr), counter: i2 })))
+    })
+
+  relabel
+    (example)
+    (0)
+    (({ tree }) => console.log (JSON.stringify (tree, null, 2)))
 }) ()

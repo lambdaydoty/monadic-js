@@ -1,8 +1,8 @@
-PORT=
+PORT=1048
 
-DB_X=
-DB_Y=
-DB_Z=
+DB_X=10.0.0.12
+DB_Y=10.0.0.13
+DB_Z=10.0.0.14
 
 VERSION=$(shell git describe --tag | sed -e 's/^v//')
 BASE=monadic
